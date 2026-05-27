@@ -19,6 +19,20 @@ pub struct Cli {
 pub enum Commands {
     /// Transmits a query/prompt to the Gemini model and renders the output.
     Ask(AskArgs),
+
+    /// Generates and executes system terminal commands based on natural language.
+    Cmd(CmdArgs),
+}
+
+/// Input arguments for the `cmd` subcommand.
+#[derive(clap::Args, Debug, Clone)]
+pub struct CmdArgs {
+    /// The natural language instruction describing the terminal task.
+    #[arg(
+        required = true,
+        help = "The natural language instruction describing the terminal task"
+    )]
+    pub prompt: String,
 }
 
 /// Input arguments and configuration flags for the `ask` subcommand.

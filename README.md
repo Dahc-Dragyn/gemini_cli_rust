@@ -1,112 +1,136 @@
-# ♊ Gemini CLI (Rust)
+# ♊ gemini-rs
 
-### *A High-Speed, Zero-Dependency terminal companion for Google's Gemini API*
+[![Rust](https://img.shields.io/badge/rust-2021-orange.svg?style=flat-square&logo=rust)](https://www.rust-lang.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+[![API: Gemini v1beta](https://img.shields.io/badge/API-Gemini%20v1beta-green.svg?style=flat-square&logo=google)](https://ai.google.dev/)
+[![Platform: Cross-Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-blueviolet.svg?style=flat-square)](#)
 
-**gemini_cli_rust** (compiled as `gemini-rs` or `gemini_cli_rust.exe`) is an ultra-fast, lightweight command-line tool built entirely in Rust. It compiles down to a **single portable binary (under 10MB)** with sub-millisecond startup times—perfect for local scripting, automated pipelines, or quick queries without opening a browser or waiting for heavy runtimes (like Node.js or Python) to spin up.
+*A blazingly fast, memory-safe, zero-dependency, single-binary command-line client for the Google Gemini API.*
 
----
-
-## ✨ Features
-
-- 🚀 **Sub-Millisecond Startup:** Launches instantly with zero runtime execution delay.
-- 📦 **Single Standalone Binary:** Zero dependencies. Copy the compiled `.exe` or binary and run it anywhere.
-- 🌊 **Real-Time Streaming:** Streams response tokens to your terminal instantly using Google's Server-Sent Events (SSE).
-- 🔗 **UNIX Pipeline Compositions:** Seamlessly accepts piped standard inputs (e.g. `cat error.log | gemini-rs ask "Find the bug"`).
-- 🛡️ **Zero Panics:** Designed with robust systems engineering to catch network, JSON, or key configuration errors gracefully.
-- 🔑 **Simple Setup:** Securely loads your API keys via environment variables or a local `.env` file.
+**gemini-rs** is a high-performance, monolithic systems utility engineered in Rust. By avoiding bloated runtime environments (like Node.js or Python) and focusing on bare-metal asynchronous I/O, `gemini-rs` delivers sub-millisecond startup times, near-zero idle resource footprints, and native integration with Unix/PowerShell pipelines.
 
 ---
 
-## 📂 Project Architecture
+## 🚀 Key Architectural Highlights
 
+*   **Asynchronous High-Concurrency I/O:** Fully powered by the `tokio` multi-threaded executor and `reqwest` connection-pooling client with a strict 30-second socket timeout guardrail.
+*   **Mission-Critical Memory Safety (Zero-Panic Policy):** Strict adherence to a zero-panic development pattern. Boundary check assertions, API failures, JSON mismatches, or file errors are safely caught and bubbled through robust standard `Result<T, Error>` enums via `thiserror`.
+*   **Asynchronous Stream Decoding (SSE):** Features a custom real-time Server-Sent Events (SSE) stream processor. Incorporates a dynamic UTF-8 boundary accumulator that buffers raw bytes before decoding, completely protecting multi-byte unicode characters (e.g., emojis) from packet truncation.
+*   **Pipeline & Composition Native:** Connects natively to OS input streams. Automatically detects interactive TTY vs. standard pipe configurations via `std::io::stdin().is_terminal()`, feeding file buffers directly into prompt context.
+*   **Native Subprocess Execution Generator:** Safely translates natural language prompts into executable shell scripts (using target OS detection: Windows PowerShell or UNIX sh) with manual security confirmation gates and stdout/stderr handle inheritance.
+
+---
+
+## 🛠️ Installation
+
+### 1. Prerequisite: The Rust Toolchain
+Ensure you have the Rust compiler and manager installed. If not, install via [rustup.rs](https://rustup.rs/):
+```powershell
+# Windows PowerShell
+iex (New-Object System.Net.WebClient).DownloadString('https://get.rustup.rs')
+```
+
+### 2. Compilation from Source
+Clone the repository and run an aggressive release optimization build:
+```bash
+git clone https://github.com/Dahc-Dragyn/gemini_cli_rust.git
+cd gemini_cli_rust
+cargo build --release
+```
+The optimized, standalone executable is generated at:
+*   **Windows**: `.\target\release\gemini_cli_rust.exe`
+*   **macOS / Linux**: `./target/release/gemini_cli_rust`
+
+### 3. Adding to System PATH
+To make `gemini-rs` available globally, copy the binary to a directory on your system PATH:
+*   **Windows (PowerShell)**:
+    ```powershell
+    Copy-Item .\target\release\gemini_cli_rust.exe C:\Windows\System32\gemini-rs.exe
+    ```
+*   **UNIX (macOS/Linux)**:
+    ```bash
+    sudo cp ./target/release/gemini_cli_rust /usr/local/bin/gemini-rs
+    ```
+
+---
+
+## ⚙️ Configuration
+
+`gemini-rs` safely loads credentials from system environment variables or a local `.env` file placed in the current working directory.
+
+1.  Obtain your API Key from [Google AI Studio](https://aistudio.google.com/).
+2.  Create a `.env` file inside your workspace directory:
+    ```env
+    GEMINI_API_KEY=AIzaSyBDtMkUzUen2FowOMBkIynajppk76u6864
+    ```
+
+> [!WARNING]  
+> **Parsing Warning**: Ensure there are **no trailing spaces** after your API key inside the `.env` file, as `dotenvy` line-parsers will return a `LineParse` error and render the API key unreadable.
+
+---
+
+## 📖 Usage Examples
+
+### 1. Standard Prompting (One-Shot Response)
+Submit a prompt directly and fetch the final model generation:
+```bash
+gemini-rs ask "What are the core design traits of the Rust language?"
+```
+
+### 2. Real-Time Streaming
+Toggle SSE chunk streaming to render tokens character-by-character as they are generated by the model:
+```bash
+gemini-rs ask "Explain quantum computing in three short paragraphs" --stream
+```
+
+### 3. UNIX Piping (Pipeline Composition)
+Pipe file inputs, terminal outputs, or stack traces directly into `gemini-rs` as prompt context. The utility automatically ingests stdin context if a UNIX pipeline is active:
+*   **Debugging Code Files**:
+    ```bash
+    cat src/main.rs | gemini-rs ask "Analyze this code for any performance leaks" --stream
+    ```
+*   **Investigating System Error Logs**:
+    ```bash
+    cat /var/log/nginx/error.log | gemini-rs ask "Examine these entries for SQL injection patterns"
+    ```
+*   **Explaining Shell Outputs**:
+    ```powershell
+    Get-Process | gemini-rs ask "Which process here consumes the most handles?"
+    ```
+
+### 4. Natural Language Shell Command Generator
+Generate, review, and safely execute system terminal commands on the fly:
+```bash
+gemini-rs cmd "Find all listening TCP ports on my machine"
+```
 ```text
-src/
-├── main.rs         # Async entry point and global error handler
-├── lib.rs          # Module declarations
-├── cli.rs          # Argument parsing (clap v4)
-├── error.rs        # Custom unified domain error mapping (thiserror)
-├── api/
-│   ├── client.rs   # Async HTTP connection pooling client (reqwest)
-│   └── models.rs   # Type-safe JSON serialization/deserialization (serde)
-└── io/
-    ├── pipe.rs     # Non-blocking UNIX pipe reader
-    └── stream.rs   # Real-time token streaming and rendering (futures)
+Suggested Command:
+Get-NetTCPConnection -State Listen
+
+[?] Would you like to execute this command? (y/N): y
+# Exited with code 0. Natively executed Get-NetTCPConnection inside PowerShell!
 ```
 
 ---
 
-## ⚡ Quick Setup (No Rust Experience Required!)
+## 🔧 Optional Arguments & Fine-Tuning
 
-### Step 1: Secure Your API Key
-1. Get a free Gemini API key from [Google AI Studio](https://aistudio.google.com/).
-2. In the folder where you intend to run the CLI, create a file named `.env` and add your key:
-   ```env
-   GEMINI_API_KEY="YOUR_ACTUAL_API_KEY_HERE"
-   ```
-   *(Note: The repository is configured to ignore `.env` files automatically, so your key will never be accidentally committed to GitHub.)*
+Customize model characteristics using global configuration arguments:
 
-### Step 2: Build the Executable
-If you have the Rust toolchain installed:
-1. Open your terminal in this repository directory.
-2. Run the production release build:
-   ```bash
-   cargo build --release
-   ```
-3. Your optimized executable will be generated at:
-   `./target/release/gemini_cli_rust.exe` (on Windows) or `./target/release/gemini_cli_rust` (on macOS/Linux).
+| Flag | Short | Default | Description |
+| :--- | :---: | :---: | :--- |
+| `--model` | `-m` | `gemini-3.1-flash-lite` | Override default model (e.g. `gemini-2.5-pro`, `gemini-1.5-flash`) |
+| `--temp` | `-t` | `None (0.7)` | Control creativity temperature boundaries (`0.0` to `1.0`) |
+| `--stream` | `-s` | *Disabled* | Enable Server-Sent Events real-time rendering |
 
 ---
 
-## 🚀 How to Use It (Examples)
-
-Navigate to where your compiled binary resides (or add it to your system PATH) and test these command options:
-
-### 1. Simple Prompt (One-Shot Response)
-Ask standard questions directly:
-```bash
-.\gemini_cli_rust.exe ask "What is the capital of Japan?"
-```
-
-### 2. Streaming Output (Highly Recommended!)
-Renders the response character-by-character as the model generates it, giving you instant answers:
-```bash
-.\gemini_cli_rust.exe ask "Write a story about a space hamster" --stream
-```
-
-### 3. Piping Input (UNIX Compositions)
-This is the super-power of this CLI. You can pipe any command output, file, or script context directly into the tool, and append your question:
-
-* **Debugging Code Snippets:**
-  ```bash
-  echo "fn main() { println!('Hello'); }" | .\gemini_cli_rust.exe ask "What's wrong with this Rust code?"
-  ```
-* **Analyzing Log Files:**
-  ```bash
-  cat server_error.log | .\gemini_cli_rust.exe ask "Identify the root cause of this stack trace" --stream
-  ```
-* **Explaining Directory Structures:**
-  ```bash
-  dir | .\gemini_cli_rust.exe ask "Explain what these files are"
-  ```
+## 🛡️ Unified System Error Handling
+The binary guarantees complete robustness, mapping all runtime boundaries:
+*   **`Error::MissingApiKey`**: Triggers colorized warnings when `GEMINI_API_KEY` is missing or contains line syntax formatting errors (Exit Code `2`).
+*   **`Error::RateLimit (HTTP 429)`**: Intercepts model overload errors gracefully and suggests exponential backoffs (Exit Code `1`).
+*   **`Error::Unauthorized (HTTP 401)`**: Confirms if the provided key has been revoked or is invalid.
+*   **`Error::Network`**: Handles standard socket failures and transient internet drops cleanly.
 
 ---
-
-## 🔧 Optional Flags
-
-| Flag | Shortcut | Default | Description |
-|---|---|---|---|
-| `--model` | `-m` | `gemini-3.1-flash-lite` | Target model variation (e.g. `gemini-1.5-pro` or `gemini-3.1-flash-lite`) |
-| `--stream` | `-s` | *False* | Toggles real-time streaming token render |
-| `--temp` | `-t` | *None (0.7)* | Set temperature override (`0.0` for deterministic, `1.0` for creative) |
-
----
-
-## 📋 System Requirements
-
-- **OS:** Windows 10/11, macOS, or Linux.
-- **Dependencies:** None. Runs 100% standalone.
-- **Internet:** Required to call Google's API endpoints.
-
----
-
-*Built with ❤️ in Rust for speed-obsessed developers.*
+*Developed with systems integrity by Antigravity.*
