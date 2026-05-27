@@ -61,7 +61,7 @@ To make `gemini-rs` available globally, copy the binary to a directory on your s
 1.  Obtain your API Key from [Google AI Studio](https://aistudio.google.com/).
 2.  Create a `.env` file inside your workspace directory:
     ```env
-    GEMINI_API_KEY=AIzaSyBDtMkUzUen2FowOMBkIynajppk76u6864
+   
     ```
 
 > [!WARNING]  
